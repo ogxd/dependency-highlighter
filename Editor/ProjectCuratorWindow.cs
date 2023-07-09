@@ -60,7 +60,7 @@ namespace Ogxd.ProjectCurator
             if (Directory.Exists(selectedPath))
                 return;
 
-            string guid = AssetDatabase.AssetPathToGUID(selectedPath);
+            GUID guid = AssetDatabase.GUIDFromAssetPath(selectedPath);
             AssetInfo selectedAssetInfo = ProjectCurator.GetAsset(guid);
             if (selectedAssetInfo == null) {
                 if (selectedPath.StartsWith("Assets"))
@@ -109,12 +109,13 @@ namespace Ogxd.ProjectCurator
                 if (deleteClicked) {
                     File.Delete(selectedPath);
                     AssetDatabase.Refresh();
-                    ProjectCurator.RemoveAssetFromDatabase(selectedPath);
+                    GUID guidDeleted = AssetDatabase.GUIDFromAssetPath(selectedPath);
+                    ProjectCurator.RemoveAssetFromDatabase(guidDeleted);
                 }
             }
         }
 
-        void RenderOtherAsset(string guid) {
+        void RenderOtherAsset(GUID guid) {
             var path = AssetDatabase.GUIDToAssetPath(guid);
             if (GUILayout.Button(new GUIContent(Path.GetFileName(path), path), ItemStyle)) {
                 UnityEditor.Selection.activeObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path);

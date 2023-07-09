@@ -10,11 +10,11 @@ namespace Ogxd.ProjectCurator
     public static class ProjectCurator
     {
         [NonSerialized]
-        private static Dictionary<string, AssetInfo> guidToAssetInfo;
+        private static Dictionary<GUID, AssetInfo> guidToAssetInfo;
 
         static ProjectCurator()
         {
-            guidToAssetInfo = new Dictionary<string, AssetInfo>();
+            guidToAssetInfo = new Dictionary<GUID, AssetInfo>();
             try {
                 var assetInfos = ProjectCuratorData.AssetInfos;
                 for (int i = 0; i < assetInfos.Length; i++) {
@@ -25,13 +25,13 @@ namespace Ogxd.ProjectCurator
             }
         }
 
-        public static AssetInfo GetAsset(string guid)
+        public static AssetInfo GetAsset(GUID guid)
         {
             guidToAssetInfo.TryGetValue(guid, out AssetInfo assetInfo);
             return assetInfo;
         }
 
-        public static AssetInfo AddAssetToDatabase(string guid, HashSet<string> referencers = null)
+        public static AssetInfo AddAssetToDatabase(GUID guid, HashSet<GUID> referencers = null)
         {
             AssertGuidValid(guid);
 
@@ -44,7 +44,7 @@ namespace Ogxd.ProjectCurator
             var dependencyPaths = AssetDatabase.GetDependencies(path, recursive: false);
 
             foreach (string dependencyPath in dependencyPaths) {
-                var dependencyGuid = AssetDatabase.AssetPathToGUID(dependencyPath);
+                var dependencyGuid = AssetDatabase.GUIDFromAssetPath(dependencyPath);
                 if (
                     dependencyGuid != assetInfo.guid &&
                     guidToAssetInfo.TryGetValue(dependencyGuid, out AssetInfo depInfo)
@@ -62,12 +62,12 @@ namespace Ogxd.ProjectCurator
             return assetInfo;
         }
 
-        public static AssetInfo RemoveAssetFromDatabase(string guid)
+        public static AssetInfo RemoveAssetFromDatabase(GUID guid)
         {
             AssertGuidValid(guid);
 
             if (guidToAssetInfo.TryGetValue(guid, out AssetInfo assetInfo)) {
-                foreach (string referencer in assetInfo.referencers) {
+                foreach (GUID referencer in assetInfo.referencers) {
                     if (guidToAssetInfo.TryGetValue(referencer, out AssetInfo referencerAssetInfo)) {
                         if (referencerAssetInfo.dependencies.Remove(guid)) {
                             referencerAssetInfo.ClearIncludedStatus();
@@ -79,7 +79,7 @@ namespace Ogxd.ProjectCurator
                         Warn($"Asset '{FormatGuid(referencer)}' that depends on '{FormatGuid(guid)}' is not present in the database");
                     }
                 }
-                foreach (string dependency in assetInfo.dependencies) {
+                foreach (GUID dependency in assetInfo.dependencies) {
                     if (guidToAssetInfo.TryGetValue(dependency, out AssetInfo dependencyAssetInfo)) {
                         if (dependencyAssetInfo.referencers.Remove(guid)) {
                             dependencyAssetInfo.ClearIncludedStatus();
@@ -106,7 +106,7 @@ namespace Ogxd.ProjectCurator
 
         public static void RebuildDatabase()
         {
-            guidToAssetInfo = new Dictionary<string, AssetInfo>();
+            guidToAssetInfo = new Dictionary<GUID, AssetInfo>();
 
             var allAssetPaths = AssetDatabase.GetAllAssetPaths();
 
@@ -120,7 +120,7 @@ namespace Ogxd.ProjectCurator
             // Gather all assets
             for (int p = 0; p < allAssetPaths.Length; p++) {
                 string path = allAssetPaths[p];
-                string guid = AssetDatabase.AssetPathToGUID(path);
+                GUID guid = AssetDatabase.GUIDFromAssetPath(path);
                 AssetInfo assetInfo = new AssetInfo(guid);
                 guidToAssetInfo.Add(assetInfo.guid, assetInfo);
             }
@@ -135,7 +135,7 @@ namespace Ogxd.ProjectCurator
                         break;
                     }
                 }
-                string guid = AssetDatabase.AssetPathToGUID(path);
+                GUID guid = AssetDatabase.GUIDFromAssetPath(path);
                 AddAssetToDatabase(guid);
             }
 
@@ -165,7 +165,7 @@ namespace Ogxd.ProjectCurator
             Debug.LogWarning("ProjectCurator: " + message);
         }
 
-        static string FormatGuid(string guid)
+        static string FormatGuid(GUID guid)
         {
             var path = AssetDatabase.GUIDToAssetPath(guid);
             return string.IsNullOrEmpty(path)
@@ -173,11 +173,9 @@ namespace Ogxd.ProjectCurator
                 : path;
         }
 
-        static void AssertGuidValid(string guid)
+        static void AssertGuidValid(GUID guid)
         {
-            if (string.IsNullOrEmpty(guid)) {
-                throw new ArgumentException("GUID required", nameof(guid));
-            }
+
         }
     }
 }

@@ -22,18 +22,17 @@ namespace Ogxd.ProjectCurator
     [Serializable]
     public class AssetInfo : ISerializationCallbackReceiver
     {
+        [NonSerialized]
+        public HashSet<GUID> referencers = new HashSet<GUID>();
 
         [NonSerialized]
-        public HashSet<string> referencers = new HashSet<string>();
-
-        [NonSerialized]
-        public HashSet<string> dependencies = new HashSet<string>();
+        public HashSet<GUID> dependencies = new HashSet<GUID>();
 
         [SerializeField]
-        public string[] _references;
+        public GUID[] _references;
 
         [SerializeField]
-        public string[] _dependencies;
+        public GUID[] _dependencies;
 
         public void OnBeforeSerialize()
         {
@@ -43,14 +42,14 @@ namespace Ogxd.ProjectCurator
 
         public void OnAfterDeserialize()
         {
-            referencers = new HashSet<string>(_references ?? new string[0]);
-            dependencies = new HashSet<string>(_dependencies ?? new string[0]);
+            referencers = new HashSet<GUID>(_references ?? new GUID[0]);
+            dependencies = new HashSet<GUID>(_dependencies ?? new GUID[0]);
         }
 
         [SerializeField]
-        public string guid;
+        public GUID guid;
 
-        public AssetInfo(string guid)
+        public AssetInfo(GUID guid)
         {
             this.guid = guid;
         }

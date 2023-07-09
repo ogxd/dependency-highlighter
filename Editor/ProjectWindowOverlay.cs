@@ -12,9 +12,11 @@ namespace Ogxd.ProjectCurator
             EditorApplication.projectWindowItemOnGUI += ProjectWindowItemOnGUI;
         }
 
-        private static void ProjectWindowItemOnGUI(string guid, Rect rect)
+        private static void ProjectWindowItemOnGUI(string guidStr, Rect rect)
         {
-            if (enabled) {
+            if (enabled)
+            {
+                GUID.TryParse(guidStr, out GUID guid);
                 AssetInfo assetInfo = ProjectCurator.GetAsset(guid);
                 if (assetInfo != null) {
                     var content = new GUIContent(assetInfo.IsIncludedInBuild ? ProjectIcons.LinkBlue : ProjectIcons.LinkBlack, assetInfo.IncludedStatus.ToString());
