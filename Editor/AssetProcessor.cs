@@ -9,6 +9,8 @@ namespace Ogxd.ProjectCurator
     /// </summary>
     public class AssetProcessor : UnityEditor.AssetModificationProcessor
     {
+        private static readonly Queue<Action> _actions = new Queue<Action>();
+
         [InitializeOnLoadMethod]
         public static void Init()
         {
@@ -20,20 +22,18 @@ namespace Ogxd.ProjectCurator
         /// </summary>
         private static void OnUpdate()
         {
-            if (Actions.Count > 0) {
-                while (Actions.Count > 0) {
-                    Actions.Dequeue()?.Invoke();
+            if (_actions.Count > 0) {
+                while (_actions.Count > 0) {
+                    _actions.Dequeue()?.Invoke();
                 }
                 ProjectCurator.SaveDatabase();
             }
         }
 
-        private static Queue<Action> Actions = new Queue<Action>();
-
         static string[] OnWillSaveAssets(string[] paths)
         {
             if (ProjectCuratorData.IsUpToDate) {
-                Actions.Enqueue(() => {
+                _actions.Enqueue(() => {
                     foreach (string path in paths) {
                         var guid = AssetDatabase.AssetPathToGUID(path);
                         var removedAsset = ProjectCurator.RemoveAssetFromDatabase(guid);
@@ -47,7 +47,7 @@ namespace Ogxd.ProjectCurator
         static void OnWillCreateAsset(string assetPath)
         {
             if (ProjectCuratorData.IsUpToDate) {
-                Actions.Enqueue(() => {
+                _actions.Enqueue(() => {
                     var guid = AssetDatabase.AssetPathToGUID(assetPath);
                     if (guid != string.Empty) {
                         ProjectCurator.AddAssetToDatabase(guid);
