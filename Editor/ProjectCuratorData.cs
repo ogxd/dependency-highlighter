@@ -11,7 +11,10 @@ namespace Ogxd.ProjectCurator
 
         [SerializeField]
         private bool isUpToDate = false;
-        public static bool IsUpToDate { get { return Instance.isUpToDate; } set { Instance.isUpToDate = value; } }
+        public static bool IsUpToDate {
+            get => Instance.isUpToDate;
+            set => Instance.isUpToDate = value;
+        }
 
         [SerializeField]
         private AssetInfo[] assetInfos;
