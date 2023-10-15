@@ -7,7 +7,7 @@ namespace Ogxd.ProjectCurator
     [Serializable]
     public class ProjectCuratorData
     {
-        private const string JSON_PATH = "ProjectSettings/ProjectCuratorSettings.json";
+        private const string JSON_PATH = "UserSettings/ProjectCuratorData.json";
 
         [SerializeField]
         private bool isUpToDate = false;
