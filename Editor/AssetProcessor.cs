@@ -46,6 +46,14 @@ namespace Ogxd.ProjectCurator
 
         static void OnWillCreateAsset(string assetPath)
         {
+            // Due to an apparent bug in Unity, newly created folders give the
+            // path of the meta file, instead of the folder itself. Trim the
+            // .meta off the end in the case that this happens.
+            //
+            // .meta files are not assets, so there are no other cases where
+            // this will have any effect.
+            assetPath = assetPath.TrimEnd(".meta");
+
             if (ProjectCuratorData.IsUpToDate) {
                 _actions.Enqueue(() => {
                     var guid = AssetDatabase.AssetPathToGUID(assetPath);
