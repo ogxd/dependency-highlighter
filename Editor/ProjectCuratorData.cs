@@ -7,11 +7,14 @@ namespace Ogxd.ProjectCurator
     [Serializable]
     public class ProjectCuratorData
     {
-        private const string JSON_PATH = "ProjectSettings/ProjectCuratorSettings.json";
+        private const string JSON_PATH = "UserSettings/ProjectCuratorData.json";
 
         [SerializeField]
         private bool isUpToDate = false;
-        public static bool IsUpToDate { get { return Instance.isUpToDate; } set { Instance.isUpToDate = value; } }
+        public static bool IsUpToDate {
+            get => Instance.isUpToDate;
+            set => Instance.isUpToDate = value;
+        }
 
         [SerializeField]
         private AssetInfo[] assetInfos;
