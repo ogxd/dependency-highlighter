@@ -48,16 +48,11 @@ namespace Ogxd.ProjectCurator
         }
 
         [SerializeField]
-        public string path;
+        public string guid;
 
-        public AssetInfo(string path)
+        public AssetInfo(string guid)
         {
-            this.path = path;
-        }
-
-        public string[] GetDependencies()
-        {
-            return AssetDatabase.GetDependencies(path, recursive: false);
+            this.guid = guid;
         }
 
         public void ClearIncludedStatus()
@@ -92,6 +87,7 @@ namespace Ogxd.ProjectCurator
 
             bool isInEditor = false;
 
+            string path = AssetDatabase.GUIDToAssetPath(guid);
             string[] directories = path.ToLower().Split('/');
             for (int i = 0; i < directories.Length - 1; i++) {
                 switch (directories[i]) {

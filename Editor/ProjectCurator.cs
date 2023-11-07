@@ -10,39 +10,47 @@ namespace Ogxd.ProjectCurator
     public static class ProjectCurator
     {
         [NonSerialized]
-        private static Dictionary<string, AssetInfo> pathToAssetInfo;
+        private static Dictionary<string, AssetInfo> guidToAssetInfo;
 
         static ProjectCurator()
         {
-            pathToAssetInfo = new Dictionary<string, AssetInfo>();
-            var assetInfos = ProjectCuratorData.AssetInfos;
-            for (int i = 0; i < assetInfos.Length; i++) {
-                pathToAssetInfo.Add(assetInfos[i].path, assetInfos[i]);
+            guidToAssetInfo = new Dictionary<string, AssetInfo>();
+            try {
+                var assetInfos = ProjectCuratorData.AssetInfos;
+                for (int i = 0; i < assetInfos.Length; i++) {
+                    guidToAssetInfo.Add(assetInfos[i].guid, assetInfos[i]);
+                }
+            } catch (Exception e) {
+                Debug.LogError($"An error occurred while loading ProjectCurator database: {e}");
             }
         }
 
-        public static AssetInfo GetAsset(string path)
+        public static AssetInfo GetAsset(string guid)
         {
-            AssetInfo assetInfo = null;
-            pathToAssetInfo.TryGetValue(path, out assetInfo);
+            guidToAssetInfo.TryGetValue(guid, out AssetInfo assetInfo);
             return assetInfo;
         }
 
-        public static AssetInfo AddAssetToDatabase(string path, HashSet<string> referencers = null)
+        public static AssetInfo AddAssetToDatabase(string guid, HashSet<string> referencers = null)
         {
+            AssertGuidValid(guid);
+
             AssetInfo assetInfo;
-            if (!pathToAssetInfo.TryGetValue(path, out assetInfo)) {
-                pathToAssetInfo.Add(path, assetInfo = new AssetInfo(path));
+            if (!guidToAssetInfo.TryGetValue(guid, out assetInfo)) {
+                guidToAssetInfo.Add(guid, assetInfo = new AssetInfo(guid));
             }
 
-            var dependencies = assetInfo.GetDependencies();
+            var path = AssetDatabase.GUIDToAssetPath(guid);
+            var dependencyPaths = AssetDatabase.GetDependencies(path, recursive: false);
 
-            foreach (string dependency in dependencies) {
-                if (dependency == assetInfo.path)
-                    continue;
-                if (pathToAssetInfo.TryGetValue(dependency, out AssetInfo depInfo)) {
-                    assetInfo.dependencies.Add(dependency);
-                    depInfo.referencers.Add(assetInfo.path);
+            foreach (string dependencyPath in dependencyPaths) {
+                var dependencyGuid = AssetDatabase.AssetPathToGUID(dependencyPath);
+                if (
+                    dependencyGuid != assetInfo.guid &&
+                    guidToAssetInfo.TryGetValue(dependencyGuid, out AssetInfo depInfo)
+                ) {
+                    assetInfo.dependencies.Add(dependencyGuid);
+                    depInfo.referencers.Add(assetInfo.guid);
                     // Included status may have changed and need to be recomputed
                     depInfo.ClearIncludedStatus();
                 }
@@ -54,36 +62,38 @@ namespace Ogxd.ProjectCurator
             return assetInfo;
         }
 
-        public static AssetInfo RemoveAssetFromDatabase(string asset)
+        public static AssetInfo RemoveAssetFromDatabase(string guid)
         {
-            if (pathToAssetInfo.TryGetValue(asset, out AssetInfo assetInfo)) {
+            AssertGuidValid(guid);
+
+            if (guidToAssetInfo.TryGetValue(guid, out AssetInfo assetInfo)) {
                 foreach (string referencer in assetInfo.referencers) {
-                    if (pathToAssetInfo.TryGetValue(referencer, out AssetInfo referencerAssetInfo)) {
-                        if (referencerAssetInfo.dependencies.Remove(asset)) {
+                    if (guidToAssetInfo.TryGetValue(referencer, out AssetInfo referencerAssetInfo)) {
+                        if (referencerAssetInfo.dependencies.Remove(guid)) {
                             referencerAssetInfo.ClearIncludedStatus();
                         } else {
                             // Non-Reciprocity Error
-                            Debug.LogWarning($"Asset '{referencer}' that depends on '{asset}' doesn't have it as a dependency");
+                            Warn($"Asset '{FormatGuid(referencer)}' that depends on '{FormatGuid(guid)}' doesn't have it as a dependency");
                         }
                     } else {
-                        Debug.LogWarning($"Asset '{referencer}' that depends on '{asset}' is not present in the database");
+                        Warn($"Asset '{FormatGuid(referencer)}' that depends on '{FormatGuid(guid)}' is not present in the database");
                     }
                 }
                 foreach (string dependency in assetInfo.dependencies) {
-                    if (pathToAssetInfo.TryGetValue(dependency, out AssetInfo dependencyAssetInfo)) {
-                        if (dependencyAssetInfo.referencers.Remove(asset)) {
+                    if (guidToAssetInfo.TryGetValue(dependency, out AssetInfo dependencyAssetInfo)) {
+                        if (dependencyAssetInfo.referencers.Remove(guid)) {
                             dependencyAssetInfo.ClearIncludedStatus();
                         } else {
                             // Non-Reciprocity Error
-                            Debug.LogWarning($"Asset '{dependency}' that is referenced by '{asset}' doesn't have it as a referencer");
+                            Warn($"Asset '{FormatGuid(dependency)}' that is referenced by '{FormatGuid(guid)}' doesn't have it as a referencer");
                         }
                     } else {
-                        Debug.LogWarning($"Asset '{dependency}' that is referenced by '{asset}' is not present in the database");
+                        Warn($"Asset '{FormatGuid(dependency)}' that is referenced by '{FormatGuid(guid)}' is not present in the database");
                     }
                 }
-                pathToAssetInfo.Remove(asset);
+                guidToAssetInfo.Remove(guid);
             } else {
-                Debug.LogWarning($"Asset '{asset}' is not present in the database");
+                Warn($"Asset '{FormatGuid(guid)}' is not present in the database");
             }
 
             return assetInfo;
@@ -91,36 +101,42 @@ namespace Ogxd.ProjectCurator
 
         public static void ClearDatabase()
         {
-            pathToAssetInfo.Clear();
+            guidToAssetInfo.Clear();
         }
 
         public static void RebuildDatabase()
         {
-            pathToAssetInfo = new Dictionary<string, AssetInfo>();
+            guidToAssetInfo = new Dictionary<string, AssetInfo>();
 
             var allAssetPaths = AssetDatabase.GetAllAssetPaths();
 
             // Ignore non-assets (package folder for instance) and directories
-            allAssetPaths = allAssetPaths.Where(x => x.StartsWith("Assets/") && !Directory.Exists(x)).ToArray();
+            allAssetPaths = allAssetPaths
+                .Where(path => path.StartsWith("Assets/") && !Directory.Exists(path))
+                .ToArray();
 
             EditorUtility.DisplayProgressBar("Building Dependency Database", "Gathering All Assets...", 0f);
 
             // Gather all assets
             for (int p = 0; p < allAssetPaths.Length; p++) {
-                AssetInfo assetInfo = new AssetInfo(allAssetPaths[p]);
-                pathToAssetInfo.Add(assetInfo.path, assetInfo);
+                string path = allAssetPaths[p];
+                string guid = AssetDatabase.AssetPathToGUID(path);
+                AssetInfo assetInfo = new AssetInfo(guid);
+                guidToAssetInfo.Add(assetInfo.guid, assetInfo);
             }
 
             // Find links between assets
             for (int p = 0; p < allAssetPaths.Length; p++) {
+                var path = allAssetPaths[p];
                 if (p % 10 == 0) {
-                    var cancel = EditorUtility.DisplayCancelableProgressBar("Building Dependency Database", allAssetPaths[p], (float)p / allAssetPaths.Length);
+                    var cancel = EditorUtility.DisplayCancelableProgressBar("Building Dependency Database", path, (float)p / allAssetPaths.Length);
                     if (cancel) {
-                        pathToAssetInfo = null;
+                        guidToAssetInfo = null;
                         break;
                     }
                 }
-                AddAssetToDatabase(allAssetPaths[p]);
+                string guid = AssetDatabase.AssetPathToGUID(path);
+                AddAssetToDatabase(guid);
             }
 
             EditorUtility.ClearProgressBar();
@@ -132,16 +148,36 @@ namespace Ogxd.ProjectCurator
 
         public static void SaveDatabase()
         {
-            if (pathToAssetInfo == null)
+            if (guidToAssetInfo == null)
                 return;
-            var assetInfos = new AssetInfo[pathToAssetInfo.Count];
+            var assetInfos = new AssetInfo[guidToAssetInfo.Count];
             int i = 0;
-            foreach (var pair in pathToAssetInfo) {
+            foreach (var pair in guidToAssetInfo) {
                 assetInfos[i] = pair.Value;
                 i++;
             }
             ProjectCuratorData.AssetInfos = assetInfos;
             ProjectCuratorData.Save();
+        }
+
+        static void Warn(string message)
+        {
+            Debug.LogWarning("ProjectCurator: " + message);
+        }
+
+        static string FormatGuid(string guid)
+        {
+            var path = AssetDatabase.GUIDToAssetPath(guid);
+            return string.IsNullOrEmpty(path)
+                ? $"(Missing asset with GUID={guid})"
+                : path;
+        }
+
+        static void AssertGuidValid(string guid)
+        {
+            if (string.IsNullOrEmpty(guid)) {
+                throw new ArgumentException("GUID required", nameof(guid));
+            }
         }
     }
 }

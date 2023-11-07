@@ -60,7 +60,8 @@ namespace Ogxd.ProjectCurator
             if (Directory.Exists(selectedPath))
                 return;
 
-            AssetInfo selectedAssetInfo = ProjectCurator.GetAsset(selectedPath);
+            string guid = AssetDatabase.AssetPathToGUID(selectedPath);
+            AssetInfo selectedAssetInfo = ProjectCurator.GetAsset(guid);
             if (selectedAssetInfo == null) {
                 if (selectedPath.StartsWith("Assets"))
                 {
@@ -69,7 +70,7 @@ namespace Ogxd.ProjectCurator
                     {
                         ProjectCurator.RebuildDatabase();
                     }
-                } 
+                }
                 else
                 {
                     EditorGUILayout.HelpBox("Project Curator ignores assets that are not in the Asset folder.", MessageType.Warning);
@@ -86,14 +87,7 @@ namespace Ogxd.ProjectCurator
             dependenciesOpen = EditorGUILayout.Foldout(dependenciesOpen, $"Dependencies ({selectedAssetInfo.dependencies.Count})");
             if (dependenciesOpen) {
                 foreach (var dependency in selectedAssetInfo.dependencies) {
-                    if (GUILayout.Button(new GUIContent(Path.GetFileName(dependency), dependency), ItemStyle)) {
-                        UnityEditor.Selection.activeObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(dependency);
-                    }
-                    rect = GUILayoutUtility.GetLastRect();
-                    GUI.DrawTexture(new Rect(rect.x - 16, rect.y, rect.height, rect.height), AssetDatabase.GetCachedIcon(dependency));
-                    AssetInfo depInfo = ProjectCurator.GetAsset(dependency);
-                    content = new GUIContent(depInfo.IsIncludedInBuild ? ProjectIcons.LinkBlue : ProjectIcons.LinkBlack, depInfo.IncludedStatus.ToString());
-                    GUI.Label(new Rect(rect.width + rect.x - 20, rect.y + 1, 16, 16), content);
+                    RenderOtherAsset(dependency);
                 }
             }
 
@@ -102,14 +96,7 @@ namespace Ogxd.ProjectCurator
             referencesOpen = EditorGUILayout.Foldout(referencesOpen, $"Referencers ({selectedAssetInfo.referencers.Count})");
             if (referencesOpen) {
                 foreach (var referencer in selectedAssetInfo.referencers) {
-                    if (GUILayout.Button(new GUIContent(Path.GetFileName(referencer), referencer), ItemStyle)) {
-                        UnityEditor.Selection.activeObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(referencer);
-                    }
-                    rect = GUILayoutUtility.GetLastRect();
-                    GUI.DrawTexture(new Rect(rect.x - 16, rect.y, rect.height, rect.height), AssetDatabase.GetCachedIcon(referencer));
-                    AssetInfo refInfo = ProjectCurator.GetAsset(referencer);
-                    content = new GUIContent(refInfo.IsIncludedInBuild ? ProjectIcons.LinkBlue : ProjectIcons.LinkBlack, refInfo.IncludedStatus.ToString());
-                    GUI.Label(new Rect(rect.width + rect.x - 20, rect.y + 1, 16, 16), content);
+                    RenderOtherAsset(referencer);
                 }
             }
 
@@ -125,6 +112,18 @@ namespace Ogxd.ProjectCurator
                     ProjectCurator.RemoveAssetFromDatabase(selectedPath);
                 }
             }
+        }
+
+        void RenderOtherAsset(string guid) {
+            var path = AssetDatabase.GUIDToAssetPath(guid);
+            if (GUILayout.Button(new GUIContent(Path.GetFileName(path), path), ItemStyle)) {
+                UnityEditor.Selection.activeObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path);
+            }
+            var rect = GUILayoutUtility.GetLastRect();
+            GUI.DrawTexture(new Rect(rect.x - 16, rect.y, rect.height, rect.height), AssetDatabase.GetCachedIcon(path));
+            AssetInfo assetInfo = ProjectCurator.GetAsset(guid);
+            var content = new GUIContent(assetInfo.IsIncludedInBuild ? ProjectIcons.LinkBlue : ProjectIcons.LinkBlack, assetInfo.IncludedStatus.ToString());
+            GUI.Label(new Rect(rect.width + rect.x - 20, rect.y + 1, 16, 16), content);
         }
 
         void IHasCustomMenu.AddItemsToMenu(GenericMenu menu)
