@@ -42,8 +42,8 @@ namespace Ogxd.ProjectCurator
 
         public void OnAfterDeserialize()
         {
-            referencers = new HashSet<GUID>(_references ?? new GUID[0]);
-            dependencies = new HashSet<GUID>(_dependencies ?? new GUID[0]);
+            referencers = new HashSet<GUID>(_references ?? Array.Empty<GUID>());
+            dependencies = new HashSet<GUID>(_dependencies ?? Array.Empty<GUID>());
         }
 
         [SerializeField]
