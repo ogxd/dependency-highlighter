@@ -23,10 +23,10 @@ namespace Ogxd.ProjectCurator
     public class AssetInfo : ISerializationCallbackReceiver
     {
         [NonSerialized]
-        public HashSet<GUID> referencers = new HashSet<GUID>();
+        public HashSet<GUID> referencers = new();
 
         [NonSerialized]
-        public HashSet<GUID> dependencies = new HashSet<GUID>();
+        public HashSet<GUID> dependencies = new();
 
         [SerializeField]
         GUID[] _references;
