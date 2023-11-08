@@ -175,7 +175,9 @@ namespace Ogxd.ProjectCurator
 
         static void AssertGuidValid(GUID guid)
         {
-
+            if (guid.Empty()) {
+                throw new ArgumentException("GUID is empty", nameof(guid));
+            }
         }
     }
 }
