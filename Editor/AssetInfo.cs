@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Newtonsoft.Json;
 using UnityEditor;
 using UnityEngine;
 
@@ -19,57 +20,37 @@ namespace Ogxd.ProjectCurator
         Referenced = 13,
     }
 
-    [Serializable]
-    public class AssetInfo : ISerializationCallbackReceiver
+    [JsonObject(MemberSerialization.OptIn)]
+    public class AssetInfo
     {
+        [JsonProperty]
+        public GUID guid;
 
-        [NonSerialized]
-        public HashSet<string> referencers = new HashSet<string>();
+        [JsonProperty]
+        public HashSet<GUID> referencers = new();
 
-        [NonSerialized]
-        public HashSet<string> dependencies = new HashSet<string>();
+        [JsonProperty]
+        public HashSet<GUID> dependencies = new();
 
-        [SerializeField]
-        public string[] _references;
+        IncludedInBuild _includedStatus;
 
-        [SerializeField]
-        public string[] _dependencies;
-
-        public void OnBeforeSerialize()
-        {
-            _references = referencers.ToArray();
-            _dependencies = dependencies.ToArray();
-        }
-
-        public void OnAfterDeserialize()
-        {
-            referencers = new HashSet<string>(_references ?? new string[0]);
-            dependencies = new HashSet<string>(_dependencies ?? new string[0]);
-        }
-
-        [SerializeField]
-        public string guid;
-
-        public AssetInfo(string guid)
+        public AssetInfo(GUID guid)
         {
             this.guid = guid;
         }
 
         public void ClearIncludedStatus()
         {
-            includedStatus = IncludedInBuild.Unknown;
+            _includedStatus = IncludedInBuild.Unknown;
         }
-
-        [NonSerialized]
-        private IncludedInBuild includedStatus;
 
         public IncludedInBuild IncludedStatus {
             get {
-                if (includedStatus != IncludedInBuild.Unknown)
-                    return includedStatus;
+                if (_includedStatus != IncludedInBuild.Unknown)
+                    return _includedStatus;
                 // Avoid circular loops
-                includedStatus = IncludedInBuild.NotIncluded;
-                return includedStatus = CheckIncludedStatus();
+                _includedStatus = IncludedInBuild.NotIncluded;
+                return _includedStatus = CheckIncludedStatus();
             }
         }
 

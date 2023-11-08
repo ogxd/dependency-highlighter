@@ -7,7 +7,7 @@ namespace Ogxd.ProjectCurator
     /// <summary>
     /// The purpose of this class is to try detecting asset changes to automatically update the ProjectCurator database.
     /// </summary>
-    public class AssetProcessor : UnityEditor.AssetModificationProcessor
+    public class AssetProcessor : AssetModificationProcessor
     {
         private static readonly Queue<Action> _actions = new Queue<Action>();
 
@@ -35,7 +35,7 @@ namespace Ogxd.ProjectCurator
             if (ProjectCuratorData.IsUpToDate) {
                 _actions.Enqueue(() => {
                     foreach (string path in paths) {
-                        var guid = AssetDatabase.AssetPathToGUID(path);
+                        var guid = AssetDatabase.GUIDFromAssetPath(path);
                         var removedAsset = ProjectCurator.RemoveAssetFromDatabase(guid);
                         ProjectCurator.AddAssetToDatabase(guid, removedAsset?.referencers);
                     }
@@ -56,10 +56,8 @@ namespace Ogxd.ProjectCurator
 
             if (ProjectCuratorData.IsUpToDate) {
                 _actions.Enqueue(() => {
-                    var guid = AssetDatabase.AssetPathToGUID(assetPath);
-                    if (guid != string.Empty) {
-                        ProjectCurator.AddAssetToDatabase(guid);
-                    }
+                    var guid = AssetDatabase.GUIDFromAssetPath(assetPath);
+                    ProjectCurator.AddAssetToDatabase(guid);
                 });
             }
         }
@@ -67,10 +65,8 @@ namespace Ogxd.ProjectCurator
         static AssetDeleteResult OnWillDeleteAsset(string assetPath, RemoveAssetOptions removeAssetOptions)
         {
             if (ProjectCuratorData.IsUpToDate) {
-                var guid = AssetDatabase.AssetPathToGUID(assetPath);
-                if (guid != string.Empty) {
-                    ProjectCurator.RemoveAssetFromDatabase(guid);
-                }
+                var guid = AssetDatabase.GUIDFromAssetPath(assetPath);
+                ProjectCurator.RemoveAssetFromDatabase(guid);
             }
             return AssetDeleteResult.DidNotDelete;
         }
