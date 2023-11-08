@@ -1,26 +1,44 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.IO;
+using UnityEditor;
 using UnityEngine;
 
 namespace Ogxd.ProjectCurator
 {
-    [Serializable]
+    class GuidConverter : JsonConverter<GUID>
+    {
+        public override GUID ReadJson(JsonReader reader, Type objectType, GUID existingValue, bool hasExistingValue, JsonSerializer serializer)
+        {
+            GUID.TryParse(reader.Value as string, out var result);
+            return result;
+        }
+
+        public override void WriteJson(JsonWriter writer, GUID value, JsonSerializer serializer)
+        {
+            writer.WriteValue(value.ToString());
+        }
+    }
+
+    [JsonObject(MemberSerialization.OptIn)]
     public class ProjectCuratorData
     {
         private const string JSON_PATH = "UserSettings/ProjectCuratorData.json";
 
-        [SerializeField]
-        private bool isUpToDate = false;
+        [JsonProperty]
+        bool isUpToDate = false;
+
         public static bool IsUpToDate {
             get => Instance.isUpToDate;
             set => Instance.isUpToDate = value;
         }
 
-        [SerializeField]
-        private AssetInfo[] assetInfos;
+        [JsonProperty]
+        AssetInfo[] _assetInfos;
+
         public static AssetInfo[] AssetInfos {
-            get => Instance.assetInfos ?? (Instance.assetInfos = new AssetInfo[0]);
-            set => Instance.assetInfos = value;
+            get => Instance._assetInfos ?? (Instance._assetInfos = Array.Empty<AssetInfo>());
+            set => Instance._assetInfos = value;
         }
 
         private static ProjectCuratorData instance;
@@ -28,19 +46,21 @@ namespace Ogxd.ProjectCurator
             get {
                 if (instance == null) {
                     if (File.Exists(JSON_PATH)) {
-                        instance = JsonUtility.FromJson<ProjectCuratorData>(File.ReadAllText(JSON_PATH));
+                        var json = File.ReadAllText(JSON_PATH);
+                        instance = JsonConvert.DeserializeObject<ProjectCuratorData>(json, GuidConverter);
                     } else {
                         instance = new ProjectCuratorData();
-                        File.WriteAllText(JSON_PATH, JsonUtility.ToJson(instance));
                     }
                 }
                 return instance;
             }
         }
 
+        private static readonly GuidConverter GuidConverter = new();
         public static void Save()
         {
-            File.WriteAllText(JSON_PATH, JsonUtility.ToJson(Instance));
+            var json = JsonConvert.SerializeObject(Instance, GuidConverter);
+            File.WriteAllText(JSON_PATH, json);
         }
     }
 }

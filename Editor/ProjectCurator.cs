@@ -35,9 +35,8 @@ namespace Ogxd.ProjectCurator
         {
             AssertGuidValid(guid);
 
-            AssetInfo assetInfo;
-            if (!guidToAssetInfo.TryGetValue(guid, out assetInfo)) {
-                guidToAssetInfo.Add(guid, assetInfo = new AssetInfo(guid));
+            if (!guidToAssetInfo.TryGetValue(guid, out var assetInfo)) {
+                guidToAssetInfo.Add(guid, assetInfo = new(guid));
             }
 
             var path = AssetDatabase.GUIDToAssetPath(guid);
