@@ -29,10 +29,10 @@ namespace Ogxd.ProjectCurator
         public HashSet<GUID> dependencies = new HashSet<GUID>();
 
         [SerializeField]
-        public GUID[] _references;
+        GUID[] _references;
 
         [SerializeField]
-        public GUID[] _dependencies;
+        GUID[] _dependencies;
 
         public void OnBeforeSerialize()
         {
