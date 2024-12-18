@@ -37,6 +37,18 @@ namespace Ogxd.ProjectCurator
 
         private void OnGUI()
         {
+	        if (EditorApplication.isCompiling)
+	        {
+		        EditorGUILayout.HelpBox("Currently recompiling..", MessageType.Info);
+		        return;
+	        }
+	        
+	        if (EditorApplication.isUpdating)
+	        {
+		        EditorGUILayout.HelpBox("Currently refreshing the asset database...", MessageType.Info);
+		        return;
+	        }
+	        
             string selectedPath = AssetDatabase.GetAssetPath(UnityEditor.Selection.activeObject);
             if (string.IsNullOrEmpty(selectedPath))
                 return;

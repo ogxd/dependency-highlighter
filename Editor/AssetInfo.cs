@@ -1,9 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
 using UnityEditor;
-using UnityEngine;
+#if USING_ADDRESSABLES
+using UnityEditor.AddressableAssets;
+#endif
 
 namespace Ogxd.ProjectCurator
 {
@@ -56,12 +57,30 @@ namespace Ogxd.ProjectCurator
 
         public bool IsIncludedInBuild => (int)IncludedStatus >= 10;
 
+#if USING_ADDRESSABLES
+        private static string s_addressablesSettingsPath;
+        public static string AddressablesSettingsPath
+        {
+	        get
+	        {
+		        if (s_addressablesSettingsPath != null)
+			        return s_addressablesSettingsPath;
+		        if (AddressableAssetSettingsDefaultObject.SettingsExists)
+		        {
+			        s_addressablesSettingsPath = AssetDatabase.GetAssetPath(AddressableAssetSettingsDefaultObject.Settings);
+		        }
+		        return s_addressablesSettingsPath;
+	        }
+        }
+#endif
+
         private IncludedInBuild CheckIncludedStatus()
         {
-
+			// Check the calculated references, later we check the remaining references.
+			// This is done in this order to prevent loops from asserting this asset isn't referenced if it's the root.
             foreach (var referencer in referencers) {
                 AssetInfo refInfo = ProjectCurator.GetAsset(referencer);
-                if (refInfo.IsIncludedInBuild) {
+                if (refInfo._includedStatus != IncludedInBuild.Unknown && refInfo.IsIncludedInBuild) {
                     return IncludedInBuild.Referenced;
                 }
             }
@@ -103,6 +122,19 @@ namespace Ogxd.ProjectCurator
                 default:
                     break;
             }
+            
+#if USING_ADDRESSABLES
+	        if (path == AddressablesSettingsPath)
+		        return IncludedInBuild.ResourceAsset;
+#endif
+	        
+	        // Check remaining referencers that weren't calculated.
+	        foreach (var referencer in referencers) {
+		        AssetInfo refInfo = ProjectCurator.GetAsset(referencer);
+		        if (refInfo._includedStatus == IncludedInBuild.Unknown && refInfo.IsIncludedInBuild) {
+			        return IncludedInBuild.Referenced;
+		        }
+	        }
 
             return IncludedInBuild.NotIncluded;
         }

@@ -66,6 +66,8 @@ namespace Ogxd.ProjectCurator
             AssertGuidValid(guid);
 
             if (guidToAssetInfo.TryGetValue(guid, out AssetInfo assetInfo)) {
+	            // Go through everything known to reference this asset,
+	            // and remove it as a dependency.
                 foreach (GUID referencer in assetInfo.referencers) {
                     if (guidToAssetInfo.TryGetValue(referencer, out AssetInfo referencerAssetInfo)) {
                         if (referencerAssetInfo.dependencies.Remove(guid)) {
@@ -78,6 +80,8 @@ namespace Ogxd.ProjectCurator
                         Warn($"Asset '{FormatGuid(referencer)}' that depends on '{FormatGuid(guid)}' is not present in the database");
                     }
                 }
+                // Go through everything known to be referenced by this asset,
+                // and remove this asset as a referencer.
                 foreach (GUID dependency in assetInfo.dependencies) {
                     if (guidToAssetInfo.TryGetValue(dependency, out AssetInfo dependencyAssetInfo)) {
                         if (dependencyAssetInfo.referencers.Remove(guid)) {
