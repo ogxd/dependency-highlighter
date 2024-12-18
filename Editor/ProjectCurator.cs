@@ -74,10 +74,12 @@ namespace Ogxd.ProjectCurator
                             referencerAssetInfo.ClearIncludedStatus();
                         } else {
                             // Non-Reciprocity Error
-                            Warn($"Asset '{FormatGuid(referencer)}' that depends on '{FormatGuid(guid)}' doesn't have it as a dependency");
+                            if ((ProjectCuratorPreferences.instance.WarningVisibility & Warnings.NonReciprocity) != 0)
+								Warn($"Asset '{FormatGuid(referencer)}' that depends on '{FormatGuid(guid)}' doesn't have it as a dependency");
                         }
                     } else {
-                        Warn($"Asset '{FormatGuid(referencer)}' that depends on '{FormatGuid(guid)}' is not present in the database");
+	                    if ((ProjectCuratorPreferences.instance.WarningVisibility & Warnings.NotPresentInDatabase) != 0)
+							Warn($"Asset '{FormatGuid(referencer)}' that depends on '{FormatGuid(guid)}' is not present in the database");
                     }
                 }
                 // Go through everything known to be referenced by this asset,
@@ -88,15 +90,18 @@ namespace Ogxd.ProjectCurator
                             dependencyAssetInfo.ClearIncludedStatus();
                         } else {
                             // Non-Reciprocity Error
-                            Warn($"Asset '{FormatGuid(dependency)}' that is referenced by '{FormatGuid(guid)}' doesn't have it as a referencer");
+                            if ((ProjectCuratorPreferences.instance.WarningVisibility & Warnings.NonReciprocity) != 0)
+								Warn($"Asset '{FormatGuid(dependency)}' that is referenced by '{FormatGuid(guid)}' doesn't have it as a referencer");
                         }
                     } else {
-                        Warn($"Asset '{FormatGuid(dependency)}' that is referenced by '{FormatGuid(guid)}' is not present in the database");
+	                    if ((ProjectCuratorPreferences.instance.WarningVisibility & Warnings.NotPresentInDatabase) != 0)
+							Warn($"Asset '{FormatGuid(dependency)}' that is referenced by '{FormatGuid(guid)}' is not present in the database");
                     }
                 }
                 guidToAssetInfo.Remove(guid);
             } else {
-                Warn($"Asset '{FormatGuid(guid)}' is not present in the database");
+	            if ((ProjectCuratorPreferences.instance.WarningVisibility & Warnings.NotPresentInDatabase) != 0)
+					Warn($"Asset '{FormatGuid(guid)}' is not present in the database");
             }
 
             return assetInfo;
